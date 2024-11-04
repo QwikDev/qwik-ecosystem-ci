@@ -1,14 +1,10 @@
-# integration tests for vite ecosystem projects - scheduled or manual run for all suites
-name: vite-ecosystem-ci
+# integration tests for Qwik ecosystem projects - scheduled or manual run for all suites
+name: qwik-ecosystem-ci
 
 env:
   # 7 GiB by default on GitHub, setting to 6 GiB
   # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
   NODE_OPTIONS: --max-old-space-size=6144
-  # configure corepack to be strict but not download newer versions or change anything
-  COREPACK_DEFAULT_TO_LATEST: 0
-  COREPACK_ENABLE_AUTO_PIN: 0
-  COREPACK_ENABLE_STRICT: 1
 
 on:
   schedule:
@@ -26,15 +22,15 @@ on:
           - release
         default: "branch"
       ref:
-        description: "vite ref to use"
+        description: "qwik ref to use"
         required: true
         type: string
         default: "main"
       repo:
-        description: "vite repository to use"
+        description: "qwik repository to use"
         required: true
         type: string
-        default: "vitejs/vite"
+        default: "QwikDev/qwik"
   repository_dispatch:
     types: [ecosystem-ci]
 jobs:
@@ -44,37 +40,7 @@ jobs:
     strategy:
       matrix:
         suite:
-          - analogjs
-          - astro
-          - histoire
-          # - hydrogen # disabled until they complete they migration back to Vite
-          # - iles # disabled until its CI is fixed
-          - ladle
-          - laravel
-          - marko
-          - nuxt
-          # - nx # disabled temporarily
-          - previewjs
-          - quasar
-          - qwik
-          - rakkas
-          - redwoodjs
-          - remix
-          - storybook
-          - sveltekit
-          - unocss
-          - vike
-          - vite-environment-examples
-          - vite-plugin-pwa
-          - vite-plugin-react
-          # - vite-plugin-react-pages # disabled until its install setup is fixed
-          - vite-plugin-react-swc
-          - vite-plugin-svelte
-          - vite-plugin-vue
-          - vite-setup-catalogue
-          - vitepress
-          - vitest
-          - vuepress
+          - qwik-ui-headless
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -93,7 +59,7 @@ jobs:
       - run: >-
           pnpm tsx ecosystem-ci.ts
           --${{ inputs.refType || github.event.client_payload.refType || 'branch' }} ${{ inputs.ref || github.event.client_payload.ref || 'main' }}
-          --repo ${{ inputs.repo || github.event.client_payload.repo || 'vitejs/vite' }}
+          --repo ${{ inputs.repo || github.event.client_payload.repo || 'QwikDev/qwik' }}
           ${{ matrix.suite }}
         id: ecosystem-ci-run
       - if: always()
@@ -102,7 +68,7 @@ jobs:
           WORKFLOW_NAME: ci
           REF_TYPE: ${{ inputs.refType || github.event.client_payload.refType || 'branch' }}
           REF: ${{ inputs.ref || github.event.client_payload.ref || 'main' }}
-          REPO: ${{ inputs.repo || github.event.client_payload.repo || 'vitejs/vite' }}
+          REPO: ${{ inputs.repo || github.event.client_payload.repo || 'QwikDev/qwik' }}
           SUITE: ${{ matrix.suite }}
           STATUS: ${{ job.status }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

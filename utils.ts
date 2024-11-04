@@ -1,9 +1,8 @@
 import path from 'path'
 import fs from 'fs'
-import { fileURLToPath, pathToFileURL } from 'url'
+import { fileURLToPath } from 'url'
 import { execaCommand } from 'execa'
 import type {
-	PackageInfo,
 	EnvironmentData,
 	Overrides,
 	ProcessEnv,
@@ -19,7 +18,7 @@ import * as semver from 'semver'
 
 const isGitHubActions = !!process.env.GITHUB_ACTIONS
 
-let vitePath: string
+let qwikPath: string
 let cwd: string
 let env: ProcessEnv
 
@@ -71,7 +70,7 @@ export async function $(literals: TemplateStringsArray, ...values: any[]) {
 export async function setupEnvironment(): Promise<EnvironmentData> {
 	const root = dirnameFrom(import.meta.url)
 	const workspace = path.resolve(root, 'workspace')
-	vitePath = path.resolve(workspace, 'vite')
+	qwikPath = path.resolve(workspace, 'qwik')
 	cwd = process.cwd()
 	env = {
 		...process.env,
@@ -82,7 +81,7 @@ export async function setupEnvironment(): Promise<EnvironmentData> {
 		ECOSYSTEM_CI: 'true', // flag for tests, can be used to conditionally skip irrelevant tests.
 	}
 	initWorkspace(workspace)
-	return { root, workspace, vitePath, cwd, env }
+	return { root, workspace, qwikPath, cwd, env }
 }
 
 function initWorkspace(workspace: string) {
@@ -249,6 +248,7 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 			).join(', ')}`,
 		)
 	}
+
 	const agent = options.agent
 	const beforeInstallCommand = toCommand(beforeInstall, agent)
 	const beforeBuildCommand = toCommand(beforeBuild, agent)
@@ -269,7 +269,8 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 		await beforeTestCommand?.(pkg.scripts)
 		await testCommand?.(pkg.scripts)
 	}
-	let overrides = options.overrides || {}
+	const overrides = options.overrides || {}
+	// TODO
 	if (options.release) {
 		if (overrides.vite && overrides.vite !== options.release) {
 			throw new Error(
@@ -279,27 +280,11 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 			overrides.vite = options.release
 		}
 	} else {
-		overrides.vite ||= `${options.vitePath}/packages/vite`
-
-		overrides[`@vitejs/plugin-legacy`] ||=
-			`${options.vitePath}/packages/plugin-legacy`
-
-		const vitePackageInfo = await getVitePackageInfo(options.vitePath)
-		// skip if `overrides.rollup` is `false`
-		if (
-			vitePackageInfo.dependencies.rollup?.version &&
-			overrides.rollup !== false
-		) {
-			overrides.rollup = vitePackageInfo.dependencies.rollup.version
-		}
-
-		// build and apply local overrides
-		const localOverrides = await buildOverrides(pkg, options, overrides)
-		cd(dir) // buildOverrides changed dir, change it back
-		overrides = {
-			...overrides,
-			...localOverrides,
-		}
+		overrides['@builder.io/qwik'] ||= `${options.qwikPath}/packages/qwik`
+		overrides['@builder.io/qwik-city'] ||=
+			`${options.qwikPath}/packages/qwik-city`
+		overrides['eslint-plugin-qwik'] ||=
+			`${options.qwikPath}/packages/eslint-plugin-qwik`
 	}
 	await applyPackageOverrides(dir, pkg, overrides)
 	await beforeBuildCommand?.(pkg.scripts)
@@ -311,28 +296,21 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 	return { dir }
 }
 
-export async function setupViteRepo(options: Partial<RepoOptions>) {
-	const repo = options.repo || 'vitejs/vite'
+export async function setupQwikRepo(options: Partial<RepoOptions>) {
+	const repo = options.repo || 'QwikDev/qwik'
 	await setupRepo({
 		repo,
-		dir: vitePath,
+		dir: qwikPath,
 		branch: 'main',
 		shallow: true,
 		...options,
 	})
 
 	try {
-		const rootPackageJsonFile = path.join(vitePath, 'package.json')
+		const rootPackageJsonFile = path.join(qwikPath, 'package.json')
 		const rootPackageJson = JSON.parse(
 			await fs.promises.readFile(rootPackageJsonFile, 'utf-8'),
 		)
-		const viteMonoRepoNames = ['@vitejs/vite-monorepo', 'vite-monorepo']
-		const { name } = rootPackageJson
-		if (!viteMonoRepoNames.includes(name)) {
-			throw new Error(
-				`expected  "name" field of ${repo}/package.json to indicate vite monorepo, but got ${name}.`,
-			)
-		}
 		const needsWrite = await overridePackageManagerVersion(
 			rootPackageJson,
 			'pnpm',
@@ -348,12 +326,12 @@ export async function setupViteRepo(options: Partial<RepoOptions>) {
 			}
 		}
 	} catch (e) {
-		throw new Error(`Failed to setup vite repo`, { cause: e })
+		throw new Error(`Failed to setup Qwik repo`, { cause: e })
 	}
 }
 
 export async function getPermanentRef() {
-	cd(vitePath)
+	cd(qwikPath)
 	try {
 		const ref = await $`git log -1 --pretty=format:%H`
 		return ref
@@ -363,10 +341,10 @@ export async function getPermanentRef() {
 	}
 }
 
-export async function buildVite({ verify = false }) {
-	cd(vitePath)
+export async function buildQwik({ verify = false }) {
+	cd(qwikPath)
 	const frozenInstall = getCommand('pnpm', 'frozen')
-	const runBuild = getCommand('pnpm', 'run', ['build'])
+	const runBuild = getCommand('pnpm', 'run', ['build.full'])
 	const runTest = getCommand('pnpm', 'run', ['test'])
 	await $`${frozenInstall}`
 	await $`${runBuild}`
@@ -375,7 +353,7 @@ export async function buildVite({ verify = false }) {
 	}
 }
 
-export async function bisectVite(
+export async function bisectQwik(
 	good: string,
 	runSuite: () => Promise<Error | void>,
 ) {
@@ -384,7 +362,7 @@ export async function bisectVite(
 	const resetChanges = async () => $`git reset --hard HEAD`
 
 	try {
-		cd(vitePath)
+		cd(qwikPath)
 		await resetChanges()
 		await $`git bisect start`
 		await $`git bisect bad`
@@ -398,7 +376,7 @@ export async function bisectVite(
 				continue // see if next commit can be skipped too
 			}
 			const error = await runSuite()
-			cd(vitePath)
+			cd(qwikPath)
 			await resetChanges()
 			const bisectOut = await $`git bisect ${error ? 'bad' : 'good'}`
 			bisecting = bisectOut.substring(0, 10).toLowerCase() === 'bisecting:' // as long as git prints 'bisecting: ' there are more revisions to test
@@ -407,7 +385,7 @@ export async function bisectVite(
 		console.log('error while bisecting', e)
 	} finally {
 		try {
-			cd(vitePath)
+			cd(qwikPath)
 			await $`git bisect reset`
 		} catch (e) {
 			console.log('Error while resetting bisect', e)
@@ -441,6 +419,7 @@ async function overridePackageManagerVersion(
 	pkg: { [key: string]: any },
 	pm: string,
 ): Promise<boolean> {
+	// TODO: needed?
 	const versionInUse = pkg.packageManager?.startsWith(`${pm}@`)
 		? pkg.packageManager.substring(pm.length + 1)
 		: await $`${pm} --version`
@@ -554,9 +533,9 @@ export function dirnameFrom(url: string) {
 	return path.dirname(fileURLToPath(url))
 }
 
-export function parseViteMajor(vitePath: string): number {
+export function parseQwikMajor(qwikPath: string): number {
 	const content = fs.readFileSync(
-		path.join(vitePath, 'packages', 'vite', 'package.json'),
+		path.join(qwikPath, 'packages', 'qwik', 'package.json'),
 		'utf-8',
 	)
 	const pkg = JSON.parse(content)
@@ -565,71 +544,4 @@ export function parseViteMajor(vitePath: string): number {
 
 export function parseMajorVersion(version: string) {
 	return parseInt(version.split('.', 1)[0], 10)
-}
-
-async function buildOverrides(
-	pkg: any,
-	options: RunOptions,
-	repoOverrides: Overrides,
-) {
-	const { root } = options
-	const buildsPath = path.join(root, 'builds')
-	const buildFiles: string[] = fs
-		.readdirSync(buildsPath)
-		.filter((f: string) => !f.startsWith('_') && f.endsWith('.ts'))
-		.map((f) => path.join(buildsPath, f))
-	const buildDefinitions: {
-		packages: { [key: string]: string }
-		build: (options: RunOptions) => Promise<{ dir: string }>
-		dir?: string
-	}[] = await Promise.all(buildFiles.map((f) => import(pathToFileURL(f).href)))
-	const deps = new Set([
-		...Object.keys(pkg.dependencies ?? {}),
-		...Object.keys(pkg.devDependencies ?? {}),
-		...Object.keys(pkg.peerDependencies ?? {}),
-	])
-
-	const needsOverride = (p: string) =>
-		repoOverrides[p] === true || (deps.has(p) && repoOverrides[p] == null)
-	const buildsToRun = buildDefinitions.filter(({ packages }) =>
-		Object.keys(packages).some(needsOverride),
-	)
-	const overrides: Overrides = {}
-	for (const buildDef of buildsToRun) {
-		const { dir } = await buildDef.build({
-			root: options.root,
-			workspace: options.workspace,
-			vitePath: options.vitePath,
-			viteMajor: options.viteMajor,
-			skipGit: options.skipGit,
-			release: options.release,
-			verify: options.verify,
-			// do not pass along scripts
-		})
-		for (const [name, path] of Object.entries(buildDef.packages)) {
-			if (needsOverride(name)) {
-				overrides[name] = `${dir}/${path}`
-			}
-		}
-	}
-	return overrides
-}
-
-/**
- * 	use pnpm ls to get information about installed dependency versions of vite
- * @param vitePath - workspace vite root
- */
-async function getVitePackageInfo(vitePath: string): Promise<PackageInfo> {
-	try {
-		// run in vite dir to avoid package manager mismatch error from corepack
-		const current = cwd
-		cd(`${vitePath}/packages/vite`)
-		const lsOutput = $`pnpm ls --json`
-		cd(current)
-		const lsParsed = JSON.parse(await lsOutput)
-		return lsParsed[0] as PackageInfo
-	} catch (e) {
-		console.error('failed to retrieve vite package infos', e)
-		throw e
-	}
 }

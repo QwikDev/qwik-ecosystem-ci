@@ -3,7 +3,7 @@ import type { Agent } from '@antfu/ni'
 export interface EnvironmentData {
 	root: string
 	workspace: string
-	vitePath: string
+	qwikPath: string
 	cwd: string
 	env: ProcessEnv
 }
@@ -11,8 +11,8 @@ export interface EnvironmentData {
 export interface RunOptions {
 	workspace: string
 	root: string
-	vitePath: string
-	viteMajor: number
+	qwikPath: string
+	qwikMajor: number
 	verify?: boolean
 	skipGit?: boolean
 	release?: string
@@ -60,13 +60,4 @@ interface DependencyInfo {
 	version: string
 	resolved: string
 	path: string
-}
-interface PackageInfo {
-	name: string
-	version: string
-	path: string
-	private: boolean
-	dependencies: Record<string, DependencyInfo>
-	devDependencies: Record<string, DependencyInfo>
-	optionalDependencies: Record<string, DependencyInfo>
 }

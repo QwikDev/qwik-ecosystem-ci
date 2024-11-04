@@ -5,38 +5,40 @@ import { cac } from 'cac'
 
 import {
 	setupEnvironment,
-	setupViteRepo,
-	buildVite,
-	bisectVite,
-	parseViteMajor,
+	setupQwikRepo,
+	buildQwik,
+	bisectQwik,
+	parseQwikMajor,
 	parseMajorVersion,
 } from './utils.ts'
 import type { CommandOptions, RunOptions } from './types.d.ts'
 
+const QWIK_REPO = 'QwikDev/qwik'
+
 const cli = cac()
 cli
-	.command('[...suites]', 'build vite and run selected suites')
+	.command('[...suites]', 'build qwik and run selected suites')
 	.option('--verify', 'verify checkouts by running tests', { default: false })
-	.option('--repo <repo>', 'vite repository to use', { default: 'vitejs/vite' })
-	.option('--branch <branch>', 'vite branch to use', { default: 'main' })
-	.option('--tag <tag>', 'vite tag to use')
-	.option('--commit <commit>', 'vite commit sha to use')
-	.option('--release <version>', 'vite release to use from npm registry')
+	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
+	.option('--branch <branch>', 'qwik branch to use', { default: 'main' })
+	.option('--tag <tag>', 'qwik tag to use')
+	.option('--commit <commit>', 'qwik commit sha to use')
+	.option('--release <version>', 'qwik release to use from npm registry')
 	.action(async (suites, options: CommandOptions) => {
-		const { root, vitePath, workspace } = await setupEnvironment()
+		const { root, qwikPath, workspace } = await setupEnvironment()
 		const suitesToRun = getSuitesToRun(suites, root)
-		let viteMajor
+		let qwikMajor
 		if (!options.release) {
-			await setupViteRepo(options)
-			await buildVite({ verify: options.verify })
-			viteMajor = parseViteMajor(vitePath)
+			await setupQwikRepo(options)
+			await buildQwik({ verify: options.verify })
+			qwikMajor = parseQwikMajor(qwikPath)
 		} else {
-			viteMajor = parseMajorVersion(options.release)
+			qwikMajor = parseMajorVersion(options.release)
 		}
 		const runOptions: RunOptions = {
 			root,
-			vitePath,
-			viteMajor,
+			qwikPath,
+			qwikMajor,
 			workspace,
 			release: options.release,
 			verify: options.verify,
@@ -48,37 +50,37 @@ cli
 	})
 
 cli
-	.command('build-vite', 'build vite only')
-	.option('--verify', 'verify vite checkout by running tests', {
+	.command('build-qwik', 'build qwik only')
+	.option('--verify', 'verify qwik checkout by running tests', {
 		default: false,
 	})
-	.option('--repo <repo>', 'vite repository to use', { default: 'vitejs/vite' })
-	.option('--branch <branch>', 'vite branch to use', { default: 'main' })
-	.option('--tag <tag>', 'vite tag to use')
-	.option('--commit <commit>', 'vite commit sha to use')
+	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
+	.option('--branch <branch>', 'qwik branch to use', { default: 'main' })
+	.option('--tag <tag>', 'qwik tag to use')
+	.option('--commit <commit>', 'qwik commit sha to use')
 	.action(async (options: CommandOptions) => {
 		await setupEnvironment()
-		await setupViteRepo(options)
-		await buildVite({ verify: options.verify })
+		await setupQwikRepo(options)
+		await buildQwik({ verify: options.verify })
 	})
 
 cli
-	.command('run-suites [...suites]', 'run single suite with pre-built vite')
+	.command('run-suites [...suites]', 'run single suite with pre-built qwik')
 	.option(
 		'--verify',
-		'verify checkout by running tests before using local vite',
+		'verify checkout by running tests before using local qwik',
 		{ default: false },
 	)
-	.option('--repo <repo>', 'vite repository to use', { default: 'vitejs/vite' })
-	.option('--release <version>', 'vite release to use from npm registry')
+	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
+	.option('--release <version>', 'qwik release to use from npm registry')
 	.action(async (suites, options: CommandOptions) => {
-		const { root, vitePath, workspace } = await setupEnvironment()
+		const { root, qwikPath, workspace } = await setupEnvironment()
 		const suitesToRun = getSuitesToRun(suites, root)
 		const runOptions: RunOptions = {
 			...options,
 			root,
-			vitePath,
-			viteMajor: parseViteMajor(vitePath),
+			qwikPath,
+			qwikMajor: parseQwikMajor(qwikPath),
 			workspace,
 		}
 		for (const suite of suitesToRun) {
@@ -89,14 +91,14 @@ cli
 cli
 	.command(
 		'bisect [...suites]',
-		'use git bisect to find a commit in vite that broke suites',
+		'use git bisect to find a commit in qwik that broke suites',
 	)
 	.option('--good <ref>', 'last known good ref, e.g. a previous tag. REQUIRED!')
 	.option('--verify', 'verify checkouts by running tests', { default: false })
-	.option('--repo <repo>', 'vite repository to use', { default: 'vitejs/vite' })
-	.option('--branch <branch>', 'vite branch to use', { default: 'main' })
-	.option('--tag <tag>', 'vite tag to use')
-	.option('--commit <commit>', 'vite commit sha to use')
+	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
+	.option('--branch <branch>', 'qwik branch to use', { default: 'main' })
+	.option('--tag <tag>', 'qwik tag to use')
+	.option('--commit <commit>', 'qwik commit sha to use')
 	.action(async (suites, options: CommandOptions & { good: string }) => {
 		if (!options.good) {
 			console.log(
@@ -104,20 +106,20 @@ cli
 			)
 			process.exit(1)
 		}
-		const { root, vitePath, workspace } = await setupEnvironment()
+		const { root, qwikPath, workspace } = await setupEnvironment()
 		const suitesToRun = getSuitesToRun(suites, root)
 		let isFirstRun = true
 		const { verify } = options
 		const runSuite = async () => {
 			try {
-				await buildVite({ verify: isFirstRun && verify })
+				await buildQwik({ verify: isFirstRun && verify })
 				for (const suite of suitesToRun) {
 					await run(suite, {
 						verify: !!(isFirstRun && verify),
 						skipGit: !isFirstRun,
 						root,
-						vitePath,
-						viteMajor: parseViteMajor(vitePath),
+						qwikPath,
+						qwikMajor: parseQwikMajor(qwikPath),
 						workspace,
 					})
 				}
@@ -127,10 +129,10 @@ cli
 				return e
 			}
 		}
-		await setupViteRepo({ ...options, shallow: false })
+		await setupQwikRepo({ ...options, shallow: false })
 		const initialError = await runSuite()
 		if (initialError) {
-			await bisectVite(options.good, runSuite)
+			await bisectQwik(options.good, runSuite)
 		} else {
 			console.log(`no errors for starting commit, cannot bisect`)
 		}
