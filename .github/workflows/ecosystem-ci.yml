@@ -5,6 +5,8 @@ env:
   # 7 GiB by default on GitHub, setting to 6 GiB
   # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
   NODE_OPTIONS: --max-old-space-size=6144
+  # Disable incremental build, speeds up CI
+  CARGO_INCREMENTAL: 0
 
 on:
   schedule:
@@ -44,15 +46,13 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: jetli/wasm-pack-action@v0.4.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
         id: setup-node
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
-        id: setup-deno
-        continue-on-error: true
       - run: corepack enable
       - run: pnpm --version
       - run: pnpm i --frozen-lockfile
@@ -62,14 +62,3 @@ jobs:
           --repo ${{ inputs.repo || github.event.client_payload.repo || 'QwikDev/qwik' }}
           ${{ matrix.suite }}
         id: ecosystem-ci-run
-      - if: always()
-        run: pnpm tsx discord-webhook.ts
-        env:
-          WORKFLOW_NAME: ci
-          REF_TYPE: ${{ inputs.refType || github.event.client_payload.refType || 'branch' }}
-          REF: ${{ inputs.ref || github.event.client_payload.ref || 'main' }}
-          REPO: ${{ inputs.repo || github.event.client_payload.repo || 'QwikDev/qwik' }}
-          SUITE: ${{ matrix.suite }}
-          STATUS: ${{ job.status }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
