@@ -6,7 +6,7 @@ export async function test(options: RunOptions) {
 		...options,
 		repo: 'qwikifiers/qwik-ui',
 		branch: 'main',
-		// TODO: script name
-		build: 'release.prepare',
+		build: 'build.qwik-ci',
+		test: 'test.qwik-ci',
 	})
 }
