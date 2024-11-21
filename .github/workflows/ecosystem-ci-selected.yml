@@ -39,6 +39,7 @@ on:
         type: choice
         options:
           - qwik-ui-headless
+          - qwik-image
 jobs:
   execute-selected-suite:
     timeout-minutes: 30
