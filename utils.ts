@@ -1,7 +1,6 @@
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import { execaCommand } from 'execa'
 import type {
 	EnvironmentData,
 	Overrides,
@@ -15,6 +14,7 @@ import { detect, AGENTS, Agent, getCommand } from '@antfu/ni'
 import actionsCore from '@actions/core'
 // eslint-disable-next-line n/no-unpublished-import
 import * as semver from 'semver'
+import { execSync } from 'child_process'
 
 const isGitHubActions = !!process.env.GITHUB_ACTIONS
 
@@ -26,7 +26,10 @@ function cd(dir: string) {
 	cwd = path.resolve(cwd, dir)
 }
 
-export async function $(literals: TemplateStringsArray, ...values: any[]) {
+export async function $(
+	literals: TemplateStringsArray,
+	...values: any[]
+): Promise<string> {
 	const cmd = literals.reduce(
 		(result, current, i) =>
 			result + current + (values?.[i] != null ? `${values[i]}` : ''),
@@ -39,32 +42,16 @@ export async function $(literals: TemplateStringsArray, ...values: any[]) {
 		console.log(`${cwd} $> ${cmd}`)
 	}
 
-	const proc = execaCommand(cmd, {
-		env,
-		stdio: 'pipe',
+	const result = execSync(cmd, {
 		cwd,
+		encoding: 'utf-8',
 	})
-	proc.stdin && process.stdin.pipe(proc.stdin)
-	proc.stdout && proc.stdout.pipe(process.stdout)
-	proc.stderr && proc.stderr.pipe(process.stderr)
-
-	let result
-	try {
-		result = await proc
-	} catch (error) {
-		// Since we already piped the io to the parent process, we remove the duplicated
-		// messages here so it's easier to read the error message.
-		if (error.stdout) error.stdout = 'value removed by vite-ecosystem-ci'
-		if (error.stderr) error.stderr = 'value removed by vite-ecosystem-ci'
-		if (error.stdio) error.stdio = ['value removed by vite-ecosystem-ci']
-		throw error
-	}
 
 	if (isGitHubActions) {
 		actionsCore.endGroup()
 	}
 
-	return result.stdout
+	return result
 }
 
 export async function setupEnvironment(): Promise<EnvironmentData> {
@@ -75,7 +62,6 @@ export async function setupEnvironment(): Promise<EnvironmentData> {
 	env = {
 		...process.env,
 		CI: 'true',
-		TURBO_FORCE: 'true', // disable turbo caching, ecosystem-ci modifies things and we don't want replays
 		YARN_ENABLE_IMMUTABLE_INSTALLS: 'false', // to avoid errors with mutated lockfile due to overrides
 		NODE_OPTIONS: '--max-old-space-size=6144', // GITHUB CI has 7GB max, stay below
 		ECOSYSTEM_CI: 'true', // flag for tests, can be used to conditionally skip irrelevant tests.
