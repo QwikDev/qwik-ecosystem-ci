@@ -153,18 +153,23 @@ function toCommand(
 	return async (scripts: any) => {
 		const tasks = Array.isArray(task) ? task : [task]
 		for (const task of tasks) {
+			const parsedCmd = typeof task === 'string' && parseCommand(task)
 			if (task == null || task === '') {
 				continue
-			} else if (typeof task === 'string') {
-				if (scripts[task] != null) {
-					const runTaskWithAgent = getCommand(agent, 'run', [task])
+			} else if (typeof task === 'string' && parsedCmd) {
+				if (scripts[parsedCmd.cmd] != null) {
+					const runTaskWithAgent = getCommand(
+						agent,
+						'run',
+						[parsedCmd.cmd, parsedCmd.flags].filter((v): v is string => !!v),
+					)
 					await $`${runTaskWithAgent}`
 				} else {
 					await $`${task}`
 				}
 			} else if (typeof task === 'function') {
 				await task()
-			} else if (task?.script) {
+			} else if (typeof task === 'object' && task?.script) {
 				if (scripts[task.script] != null) {
 					const runTaskWithAgent = getCommand(agent, 'run', [
 						task.script,
@@ -183,6 +188,28 @@ function toCommand(
 			}
 		}
 	}
+}
+
+/**
+ * Returns command and flags from the string
+ * @example
+ * "build" => { cmd: "build" }
+ * "build --some-flag" => { cmd: "build", flags: "--some-flag=true" }
+ * "build test foo bar" => null
+ */
+function parseCommand(command: string): { cmd: string; flags?: string } | null {
+	const regex = /^(\w+)(?:\s+(--.+))?$/
+	const match = command.trim().match(regex)
+
+	if (!match) {
+		return null // Invalid structure
+	}
+	const [, cmd, flags] = match
+	if (!cmd) {
+		// Command is required
+		return null
+	}
+	return { cmd, flags }
 }
 
 export async function runInRepo(options: RunOptions & RepoOptions) {

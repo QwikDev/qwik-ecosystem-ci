@@ -6,7 +6,7 @@ export async function test(options: RunOptions) {
 		...options,
 		repo: 'qwikdev/qwik-image',
 		branch: 'main',
-		build: 'build',
+		build: 'build --skip-nx-cache',
 		test: 'test',
 	})
 }
