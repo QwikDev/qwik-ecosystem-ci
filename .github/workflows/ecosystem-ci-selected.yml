@@ -40,6 +40,7 @@ on:
         options:
           - qwik-ui-headless
           - qwik-image
+          - qwik-e-commerce
 jobs:
   execute-selected-suite:
     timeout-minutes: 30

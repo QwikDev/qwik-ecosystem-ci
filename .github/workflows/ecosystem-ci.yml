@@ -44,6 +44,7 @@ jobs:
         suite:
           - qwik-ui-headless
           - qwik-image
+          - qwik-e-commerce
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
