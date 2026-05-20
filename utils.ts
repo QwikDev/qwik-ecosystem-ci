@@ -266,9 +266,8 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 			overrides.vite = options.release
 		}
 	} else {
-		overrides['@builder.io/qwik'] ||= `${options.qwikPath}/packages/qwik`
-		overrides['@builder.io/qwik-city'] ||=
-			`${options.qwikPath}/packages/qwik-city`
+		overrides['@qwik.dev/core'] ||= `${options.qwikPath}/packages/qwik`
+		overrides['@qwik.dev/router'] ||= `${options.qwikPath}/packages/qwik-router`
 		overrides['eslint-plugin-qwik'] ||=
 			`${options.qwikPath}/packages/eslint-plugin-qwik`
 	}
