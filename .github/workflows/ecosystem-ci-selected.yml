@@ -27,7 +27,7 @@ on:
         description: "qwik ref to use"
         required: true
         type: string
-        default: "main"
+        default: "build/v2"
       repo:
         description: "qwik repository to use"
         required: true

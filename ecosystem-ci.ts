@@ -20,7 +20,7 @@ cli
 	.command('[...suites]', 'build qwik and run selected suites')
 	.option('--verify', 'verify checkouts by running tests', { default: false })
 	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
-	.option('--branch <branch>', 'qwik branch to use', { default: 'main' })
+	.option('--branch <branch>', 'qwik branch to use', { default: 'build/v2' })
 	.option('--tag <tag>', 'qwik tag to use')
 	.option('--commit <commit>', 'qwik commit sha to use')
 	.option('--release <version>', 'qwik release to use from npm registry')
@@ -55,7 +55,7 @@ cli
 		default: false,
 	})
 	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
-	.option('--branch <branch>', 'qwik branch to use', { default: 'main' })
+	.option('--branch <branch>', 'qwik branch to use', { default: 'build/v2' })
 	.option('--tag <tag>', 'qwik tag to use')
 	.option('--commit <commit>', 'qwik commit sha to use')
 	.action(async (options: CommandOptions) => {
@@ -96,7 +96,7 @@ cli
 	.option('--good <ref>', 'last known good ref, e.g. a previous tag. REQUIRED!')
 	.option('--verify', 'verify checkouts by running tests', { default: false })
 	.option('--repo <repo>', 'qwik repository to use', { default: QWIK_REPO })
-	.option('--branch <branch>', 'qwik branch to use', { default: 'main' })
+	.option('--branch <branch>', 'qwik branch to use', { default: 'build/v2' })
 	.option('--tag <tag>', 'qwik tag to use')
 	.option('--commit <commit>', 'qwik commit sha to use')
 	.action(async (suites, options: CommandOptions & { good: string }) => {

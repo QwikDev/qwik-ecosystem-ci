@@ -90,7 +90,7 @@ function initWorkspace(workspace: string) {
 
 export async function setupRepo(options: RepoOptions) {
 	if (options.branch == null) {
-		options.branch = 'main'
+		options.branch = 'build/v2'
 	}
 	if (options.shallow == null) {
 		options.shallow = true
@@ -193,7 +193,7 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 		options.skipGit = false
 	}
 	if (options.branch == null) {
-		options.branch = 'main'
+		options.branch = 'build/v2'
 	}
 
 	const {
@@ -287,7 +287,7 @@ export async function setupQwikRepo(options: Partial<RepoOptions>) {
 	await setupRepo({
 		repo,
 		dir: qwikPath,
-		branch: 'main',
+		branch: 'build/v2',
 		shallow: true,
 		...options,
 	})

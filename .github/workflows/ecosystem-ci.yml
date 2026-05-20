@@ -27,7 +27,7 @@ on:
         description: "qwik ref to use"
         required: true
         type: string
-        default: "main"
+        default: "build/v2"
       repo:
         description: "qwik repository to use"
         required: true
@@ -59,7 +59,7 @@ jobs:
       - run: pnpm i --frozen-lockfile
       - run: >-
           pnpm tsx ecosystem-ci.ts
-          --${{ inputs.refType || github.event.client_payload.refType || 'branch' }} ${{ inputs.ref || github.event.client_payload.ref || 'main' }}
+          --${{ inputs.refType || github.event.client_payload.refType || 'branch' }} ${{ inputs.ref || github.event.client_payload.ref || 'build/v2' }}
           --repo ${{ inputs.repo || github.event.client_payload.repo || 'QwikDev/qwik' }}
           ${{ matrix.suite }}
         id: ecosystem-ci-run
