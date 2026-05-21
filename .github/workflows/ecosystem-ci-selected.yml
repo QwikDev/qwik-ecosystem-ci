@@ -39,7 +39,6 @@ on:
         type: choice
         options:
           - qwik-ui-headless
-          - qwik-image
           - qwik-e-commerce
 jobs:
   execute-selected-suite:

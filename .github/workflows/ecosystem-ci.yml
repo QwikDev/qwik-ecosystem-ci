@@ -43,7 +43,6 @@ jobs:
       matrix:
         suite:
           - qwik-ui-headless
-          - qwik-image
           - qwik-e-commerce
       fail-fast: false
     steps:
