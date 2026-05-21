@@ -5,7 +5,7 @@ export async function test(options: RunOptions) {
 	await runInRepo({
 		...options,
 		repo: 'qwikdev/qwik-image',
-		branch: 'main',
+		branch: 'v2',
 		build: 'build.qwik-ci',
 		test: 'test',
 	})

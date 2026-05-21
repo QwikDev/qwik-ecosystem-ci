@@ -7,6 +7,6 @@ export async function test(options: RunOptions) {
 		repo: 'gioboa/storefront-qwik-starter',
 		branch: 'main',
 		build: 'build',
-		test: 'fmt',
+		test: 'test',
 	})
 }
