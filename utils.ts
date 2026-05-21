@@ -70,6 +70,54 @@ export async function setupEnvironment(): Promise<EnvironmentData> {
 	return { root, workspace, qwikPath, cwd, env }
 }
 
+async function withTargetPnpmWorkspace<T>(
+	dir: string,
+	overrides: Overrides,
+	fn: () => Promise<T>,
+) {
+	const workspaceFile = path.join(dir, 'pnpm-workspace.yaml')
+	const previous = fs.existsSync(workspaceFile)
+		? await fs.promises.readFile(workspaceFile, 'utf-8')
+		: undefined
+	const allowBuilds = [
+		'@parcel/watcher',
+		'@rolldown/browser',
+		'@tailwindcss/oxide',
+		'esbuild',
+		'netlify-cli',
+		'puppeteer',
+		'sharp',
+		'simple-git-hooks',
+		'spawn-sync',
+		'unix-dgram',
+		'workerd',
+	]
+	const lines = [
+		'packages:',
+		'  - "."',
+		'',
+		'allowBuilds:',
+		...allowBuilds.map((name) => `  ${JSON.stringify(name)}: true`),
+		'',
+		'overrides:',
+		...Object.entries(overrides).map(
+			([name, version]) =>
+				`  ${JSON.stringify(name)}: ${JSON.stringify(version)}`,
+		),
+		'',
+	]
+	await fs.promises.writeFile(workspaceFile, lines.join('\n'), 'utf-8')
+	try {
+		return await fn()
+	} finally {
+		if (previous != null) {
+			await fs.promises.writeFile(workspaceFile, previous, 'utf-8')
+		} else {
+			await fs.promises.rm(workspaceFile, { force: true })
+		}
+	}
+}
+
 function initWorkspace(workspace: string) {
 	if (!fs.existsSync(workspace)) {
 		fs.mkdirSync(workspace, { recursive: true })
@@ -85,6 +133,29 @@ function initWorkspace(workspace: string) {
 	const tsconfig = path.join(workspace, 'tsconfig.json')
 	if (!fs.existsSync(tsconfig)) {
 		fs.writeFileSync(tsconfig, '{}\n', 'utf-8')
+	}
+}
+
+async function linkQwikOptimizerDependency(qwikPath: string) {
+	const corePackageFile = path.join(
+		qwikPath,
+		'packages',
+		'qwik',
+		'package.json',
+	)
+	const pkg = JSON.parse(await fs.promises.readFile(corePackageFile, 'utf-8'))
+	const optimizer = pkg.dependencies?.['@qwik.dev/optimizer']
+	if (typeof optimizer === 'string' && optimizer.startsWith('workspace:')) {
+		pkg.dependencies['@qwik.dev/optimizer'] = `file:${path.join(
+			qwikPath,
+			'packages',
+			'optimizer',
+		)}`
+		await fs.promises.writeFile(
+			corePackageFile,
+			JSON.stringify(pkg, null, 2),
+			'utf-8',
+		)
 	}
 }
 
@@ -267,9 +338,12 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 		}
 	} else {
 		overrides['@qwik.dev/core'] ||= `${options.qwikPath}/packages/qwik`
+		overrides['@qwik.dev/optimizer'] ||=
+			`${options.qwikPath}/packages/optimizer`
 		overrides['@qwik.dev/router'] ||= `${options.qwikPath}/packages/qwik-router`
 		overrides['eslint-plugin-qwik'] ||=
 			`${options.qwikPath}/packages/eslint-plugin-qwik`
+		await linkQwikOptimizerDependency(options.qwikPath)
 	}
 	await applyPackageOverrides(dir, pkg, overrides)
 	await beforeBuildCommand?.(pkg.scripts)
@@ -506,7 +580,12 @@ export async function applyPackageOverrides(
 
 	// use of `ni` command here could cause lockfile violation errors so fall back to native commands that avoid these
 	if (pm === 'pnpm') {
-		await $`pnpm install --prefer-frozen-lockfile --strict-peer-dependencies false`
+		await withTargetPnpmWorkspace(
+			dir,
+			overrides,
+			() =>
+				$`pnpm install --prefer-frozen-lockfile --strict-peer-dependencies false`,
+		)
 	} else if (pm === 'yarn') {
 		await $`yarn install`
 	} else if (pm === 'npm') {
